@@ -18,8 +18,8 @@ type NewTask struct {
 }
 
 var (
-	Tasks      []*NewTask
-	Task_Ready = make(chan float64)
+	Tasks      []NewTask
+	Task_Ready = make(chan float64, 1)
 	k          int
 )
 
@@ -91,7 +91,8 @@ func Calc(expression string) (float64, error) {
 			}
 			b, a := calcStack[len(calcStack)-1], calcStack[len(calcStack)-2]
 			calcStack = calcStack[:len(calcStack)-2]
-			Tasks = append(Tasks, &NewTask{Id: k, Arg1: a, Arg2: b, Operation: token})
+			log.Println("!",k, b,a,token)
+			Tasks = append(Tasks, NewTask{Id: k, Arg1: a, Arg2: b, Operation: token})
 			log.Println("tasks:",Tasks)
 			k++
 			select {
@@ -99,7 +100,7 @@ func Calc(expression string) (float64, error) {
 				log.Println("!", Tasks[0].Result)
 				calcStack = append(calcStack, Tasks[0].Result)
 				Tasks = Tasks[:0]
-			case <-time.After(5 * time.Second):
+			case <-time.After(10 * time.Second):
 				return 0, errors.New("неверное выражение, ошибка при вычислении")
 
 			}

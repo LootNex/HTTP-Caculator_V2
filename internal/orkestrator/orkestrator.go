@@ -3,6 +3,7 @@ package orkestrator
 import (
 	"Calculator_V2/internal/agent"
 	calculator "Calculator_V2/pkg"
+	config "Calculator_V2/pkg/config"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -110,5 +111,7 @@ func OrkestratorRun() {
 	http.HandleFunc("/api/v1/expressions/", GetExpression)
 	http.HandleFunc("/internal/task", TaskHandler)
 
-	http.ListenAndServe(":8080", nil)
+	port := config.New()
+
+	http.ListenAndServe(":"+port.Port, nil)
 }
