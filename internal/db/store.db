@@ -1,5 +1,0 @@
-CREATE TABLE users(
-  uuid INTEGER PRIMARY KEY AUTOINCREMENT, 
-  login TEXT,
-  password TEXT
-);

@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -13,16 +11,6 @@ import (
 type Account struct {
 	login    string
 	password string
-}
-
-type App struct{
-	DB *sql.DB
-}
-
-func NewApp(db *sql.DB) *App{
-	return &App{
-		DB: db,
-	}
 }
 
 func (a App) Register(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +33,7 @@ func (db App) SingIn(w http.ResponseWriter, r *http.Request) {
 	account := new(Account)
 	err := json.NewDecoder(r.Body).Decode(&account)
 	if err != nil{
-		fmt.Errorf("your login or password is incorrect")
+		http.Error(w, "your login or password is incorrect", http.StatusBadRequest)
 	}
 
 	now := time.Now()

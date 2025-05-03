@@ -1,0 +1,26 @@
+services:
+
+  calculator:
+    build: .
+    container_name: http-calculator
+    ports:
+      - 8080:8080
+
+    depends_on:
+      sqlite:
+        condition: service_healthy
+
+  sqlite:
+    image: hibitdev/sqlite:latest
+    container_name: sqlite
+    hostname: sqlite.hibit
+    ports:
+        - "8191:8191"
+    volumes:
+        - "./internal/db:/db"
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /db/store.db || exit 1"]
+      interval: 3s
+      timeout: 60s
+      retries: 5
+    command: ["tail", "-f", "/dev/null"]
