@@ -2,8 +2,10 @@ package orkestrator
 
 import (
 	"Calculator_V2/internal/agent"
+	"Calculator_V2/internal/auth"
 	calculator "Calculator_V2/pkg"
 	config "Calculator_V2/pkg/config"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -84,7 +86,7 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == "GET":
 
-		if len(calculator.Tasks) == 0{
+		if len(calculator.Tasks) == 0 {
 			http.Error(w, "Нет задач", http.StatusNoContent)
 			return
 		}
@@ -95,7 +97,7 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 		solvedtask := new(agent.Solved_Task)
 
 		json.NewDecoder(r.Body).Decode(&solvedtask)
-		
+
 		calculator.Tasks[0].Operation_time = solvedtask.Operation_time
 
 		calculator.Task_Ready <- solvedtask.Result
@@ -104,12 +106,16 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func OrkestratorRun() {
+func OrkestratorRun(db *sql.DB) {
+
+	sqlDB := auth.NewApp(db)
 
 	http.HandleFunc("/api/v1/calculate", NewExpression)
 	http.HandleFunc("/api/v1/expressions", GetAllExpressions)
 	http.HandleFunc("/api/v1/expressions/", GetExpression)
 	http.HandleFunc("/internal/task", TaskHandler)
+	http.HandleFunc("/api/v1/register", sqlDB.Register)
+	http.HandleFunc("/api/v1/login", sqlDB.SingIn)
 
 	port := config.New()
 
