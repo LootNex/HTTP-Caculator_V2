@@ -5,25 +5,25 @@ import (
 	"Calculator_V2/internal/db"
 	"Calculator_V2/internal/orkestrator"
 	"Calculator_V2/pkg/config"
-	"fmt"
+	"Calculator_V2/pkg/migrations"
 	"log"
 )
 
 func main() {
 	db, err := db.InitDB()
 	if err != nil{
-		fmt.Errorf("cannot init sqlite")
+		log.Fatalf("cannot init sqlite %v", err)
 	}
-	log.Println("sqlite connection is succesful")
-	
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users(
-		uuid INTEGER PRIMARY KEY AUTOINCREMENT, 
-		login TEXT,
-		password TEXT)`)
+
+	defer db.Close()
+
+	err = migrations.InitTables(db)
 	if err != nil{
-		fmt.Errorf("cannot init table %v", err)
+		log.Fatalf("cannot init table %v", err)
 	}
+
 	port := config.New()
+
 	log.Println("server is running on port: "+port.Port)
 	go orkestrator.OrkestratorRun(db)
 

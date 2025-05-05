@@ -17,7 +17,7 @@ type Response struct {
 
 func TestNewExpression(t *testing.T) {
 	reqBody, _ := json.Marshal(map[string]string{
-	  "expression_request": "2+3*5-(2+1)/3", // ✅ Исправлено
+	  "expression_request": "2+3*5-(2+1)/3",
 	})
   
 	req := httptest.NewRequest("POST", "/api/v1/calculate", bytes.NewBuffer(reqBody))
@@ -28,8 +28,8 @@ func TestNewExpression(t *testing.T) {
   
 	handler.ServeHTTP(rr, req)
   
-	log.Println("Ответ сервера (строка):", rr.Body.String()) // ✅ Вывод ответа сервера
-	log.Printf("Сырые байты ответа: %q\n", rr.Body.Bytes())  // ✅ Показывает скрытые символы
+	log.Println("Ответ сервера (строка):", rr.Body.String())
+	log.Printf("Сырые байты ответа: %q\n", rr.Body.Bytes())
   
 	if rr.Code != http.StatusOK {
 	  t.Errorf("Ожидался статус 200, получен %d", rr.Code)

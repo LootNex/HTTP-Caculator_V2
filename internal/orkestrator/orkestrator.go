@@ -2,7 +2,7 @@ package orkestrator
 
 import (
 	"Calculator_V2/internal/agent"
-	"Calculator_V2/internal/auth"
+	auth "Calculator_V2/internal/auth"
 	calculator "Calculator_V2/pkg"
 	config "Calculator_V2/pkg/config"
 	"database/sql"
@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -21,16 +23,19 @@ type Expression struct {
 }
 
 type Request struct {
+	Jwt_token string `json:"jwt_token"`
 	Expression_request string `json:"expression_request"`
 }
 
 var AllExpressions []Expression
+
 
 func NewExpression(w http.ResponseWriter, r *http.Request) {
 
 	newexpression := new(Expression)
 	request := new(Request)
 	json.NewDecoder(r.Body).Decode(&request)
+
 
 	new_uuid := uuid.New().String()
 	newexpression.Id = new_uuid
@@ -106,11 +111,58 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func AuthMiddleware(sqlDB *auth.App, next http.Handler) http.HandlerFunc{
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		var jwtKey = []byte("super_secret_signature")
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer "){
+		http.Error(w, "Missing or invalid Authrication header", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error){
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok{
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid{
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	var UserId string
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		UserId = claims["user_id"].(string)
+
+	}else{
+		http.Error(w, "cannot parse claims", http.StatusInternalServerError)
+	}
+	fmt.Println(UserId)
+	exist, err := sqlDB.Compare(UserId)
+	if err != nil{
+		http.Error(w, fmt.Sprintf("cannot compare %v", err), http.StatusInternalServerError)
+	}
+
+	if !exist {
+		http.Error(w, "you should authorized", http.StatusUnauthorized)
+		return
+	}
+
+	next.ServeHTTP(w, r)
+	})
+
+}
+
 func OrkestratorRun(db *sql.DB) {
 
 	sqlDB := auth.NewApp(db)
 
-	http.HandleFunc("/api/v1/calculate", NewExpression)
+	http.HandleFunc("/api/v1/calculate", AuthMiddleware(sqlDB,http.HandlerFunc(NewExpression)))
 	http.HandleFunc("/api/v1/expressions", GetAllExpressions)
 	http.HandleFunc("/api/v1/expressions/", GetExpression)
 	http.HandleFunc("/internal/task", TaskHandler)

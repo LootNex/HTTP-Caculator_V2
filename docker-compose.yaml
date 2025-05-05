@@ -1,11 +1,11 @@
 services:
-
   calculator:
     build: .
     container_name: http-calculator
     ports:
       - 8080:8080
-
+    volumes:
+      - "./internal/db:/db"
     depends_on:
       sqlite:
         condition: service_healthy
@@ -15,9 +15,9 @@ services:
     container_name: sqlite
     hostname: sqlite.hibit
     ports:
-        - "8191:8191"
+      - "8191:8191"
     volumes:
-        - "./internal/db:/db"
+      - "./internal/db:/db"
     healthcheck:
       test: ["CMD-SHELL", "test -f /db/store.db || exit 1"]
       interval: 3s
