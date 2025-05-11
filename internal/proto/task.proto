@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package calculator;
+option go_package = "github.com/LootNex/HTTP-Caculator_V2/internal/proto";
+
+service CalcService {
+    rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+    rpc SendResult(SendResultRequest) returns (SendResultResponse);
+}
+
+message GetTaskRequest {}
+
+message GetTaskResponse {
+    int64 id = 1;     
+	double arg1 = 2; 
+	double arg2 = 3;
+	string operation = 4;  
+	double result = 5; 
+	int64 operation_time = 6; 
+}
+
+message SendResultRequest {
+    int64 id = 1;
+	double result = 2;
+	string status = 3;
+	int64 operation_time = 4;
+}
+
+message SendResultResponse {}

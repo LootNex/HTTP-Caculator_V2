@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"Calculator_V2/internal/orkestrator"
+	"github.com/LootNex/HTTP-Caculator_V2/internal/orkestrator"
 )
 
 type Response struct {

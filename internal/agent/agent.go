@@ -1,14 +1,14 @@
 package agent
 
 import (
-	calculator "Calculator_V2/pkg"
-	config "Calculator_V2/pkg/config"
-	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"log"
-	"net/http"
 	"time"
+
+	pb "github.com/LootNex/HTTP-Caculator_V2/internal/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Solved_Task struct {
@@ -39,40 +39,40 @@ func Count(a, b float64, oper string) (float64, error) {
 }
 
 func AgentRun() {
-	port := config.New()
+
+	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect %v", err)
+
+	}
+
+	defer conn.Close()
+
+	client := pb.NewCalcServiceClient(conn)
 	for {
-		resp, err := http.Get("http://localhost:" + port.Port + "/internal/task")
-		if err != nil {
-			time.Sleep(20 * time.Millisecond)
+		resp, err := client.GetTask(context.Background(), &pb.GetTaskRequest{})
+		if err != nil || (resp.Arg1 == 0 && resp.Arg2 == 0) {
+			time.Sleep(time.Second)
 			continue
 		}
 		start := time.Now()
-		task := new(calculator.NewTask)
-		json.NewDecoder(resp.Body).Decode(&task)
-		if task.Arg1 == 0 && task.Arg2 == 0 {
-			continue
-		}
-		solvedtask := new(Solved_Task)
-		solvedtask.Id = task.Id
-		solvedtask.Result, err = Count(task.Arg1, task.Arg2, task.Operation)
-		log.Println("FUNC COUNT AGENT", solvedtask.Result, err, task.Arg1, task.Arg2, task.Operation)
+		result, err := Count(resp.Arg1, resp.Arg2, resp.Operation)
 		if err != nil {
-			solvedtask.Status = err.Error()
-		} else {
-			solvedtask.Status = "success"
-		}
-		solvedtask.Operation_time = time.Since(start)
-		json_solved_task, err := json.Marshal(solvedtask)
-		if err != nil {
-			log.Print("wrong json")
+			log.Printf("failed to count %v", err)
 		}
 
-		_, err = http.Post("http://localhost:"+port.Port+"/internal/task", "application/json", bytes.NewBufferString(string(json_solved_task)))
-		if err != nil {
-			log.Print("something wrong with agent post")
+		ResultRequst := pb.SendResultRequest{
+			Id:            resp.Id,
+			Result:        result,
+			Status:        "counted",
+			OperationTime: int64(time.Since(start).Microseconds()),
 		}
-		resp.Body.Close()
-		time.Sleep(20 * time.Millisecond)
+
+		_, err = client.SendResult(context.Background(), &ResultRequst)
+		if err != nil {
+			log.Fatalf("failed to send result %v", err)
+		}
 
 	}
+
 }
