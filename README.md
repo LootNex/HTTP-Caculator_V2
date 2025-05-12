@@ -10,9 +10,10 @@ HTTP-сервис для вычисления математических вы�
 Запуск
 
 1. Установи зависимости и собери проект
-git clone https://github.com/LootNex/HTTP-Caculator_V2
-go mod tidy
-go run cmd/main.go
+
+ - git clone https://github.com/LootNex/HTTP-Caculator_V2
+ - go mod tidy
+ - go run cmd/main.go
 
 
 ---
