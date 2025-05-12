@@ -58,7 +58,7 @@ func TestGetAllExpressions(t *testing.T) {
 	}
 
 	var response struct {
-		Expressions []orkestrator.Expression `json:"expressions"`
+		Expressions []orkestrator.Expressions `json:"expressions"`
 	}
 	json.Unmarshal(rr.Body.Bytes(), &response)
 
@@ -90,7 +90,7 @@ func TestGetExpression(t *testing.T) {
 	}
 
 	var getResp struct {
-		Expression orkestrator.Expression `json:"expression"`
+		Expression orkestrator.Expressions `json:"expression"`
 	}
 	json.Unmarshal(getRR.Body.Bytes(), &getResp)
 

@@ -1,6 +1,7 @@
 package orkestrator
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -16,10 +17,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type Expression struct {
+type Expressions struct {
 	Id     string  `json:"id"`
-	Status string  `json:"status"`
+	Expression string `json:"expression"`
 	Result float64 `json:"result"`
+	Status string `json:"status"`
 }
 
 type Request struct {
@@ -27,11 +29,14 @@ type Request struct {
 	Expression_request string `json:"expression_request"`
 }
 
-var AllExpressions []Expression
+type HandlerContext struct{
+	DB *auth.App
+	user_id string
+}
 
 func NewExpression(w http.ResponseWriter, r *http.Request) {
 
-	newexpression := new(Expression)
+	newexpression := new(Expressions)
 	request := new(Request)
 	json.NewDecoder(r.Body).Decode(&request)
 
@@ -53,34 +58,84 @@ func NewExpression(w http.ResponseWriter, r *http.Request) {
 		newexpression.Result = result
 	}
 
-	AllExpressions = append(AllExpressions, *newexpression)
+	contex, ok := r.Context().Value(DB).(*HandlerContext)
+	if !ok {
+		http.Error(w, "cannot get user_id and sqlDB", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = contex.DB.DB.Exec("INSERT INTO expressions(expression, result, user_id) VALUES(?,?,?)", request.Expression_request, result, contex.user_id)
+	if err != nil{
+		http.Error(w, "cannot add expression", http.StatusInternalServerError)
+	}
 
 }
 
 func GetAllExpressions(w http.ResponseWriter, r *http.Request) {
 
-	var result struct {
-		Expressions []Expression `json:"expressions"`
+	contex, ok := r.Context().Value(DB).(*HandlerContext)
+	if !ok {
+		http.Error(w, "cannot get user_id and sqlDB", http.StatusInternalServerError)
+		return
+	}
+	
+
+	rows, err := contex.DB.DB.Query("SELECT id, expression, result FROM expressions WHERE user_id = ?", contex.user_id)
+	if err != nil{
+		http.Error(w, "cannot get expressions", http.StatusInternalServerError)
+		return
+	}
+	log.Println("данные получили")
+	defer rows.Close()
+
+	var expressions []Expressions
+
+	for rows.Next(){
+		log.Println("данные перебираем")
+		var exp Expressions
+
+		if err := rows.Scan(&exp.Id, &exp.Expression, &exp.Result); err != nil{
+			http.Error(w, "cannot scan expression", http.StatusInternalServerError)
+		}
+		expressions = append(expressions, exp)
+		
+		if err := rows.Err(); err != nil{
+			http.Error(w, "cannot read rows", http.StatusInternalServerError)
+		}
+
 	}
 
-	result.Expressions = AllExpressions
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.Encode(&expressions)
 
-	json.NewEncoder(w).Encode(&result)
 
 }
 
 func GetExpression(w http.ResponseWriter, r *http.Request) {
 
 	id := r.URL.Path[len("/api/v1/expressions/"):]
-	for i := range AllExpressions {
-		if AllExpressions[i].Id == id {
-			var result struct {
-				Expression Expression `json:"expression"`
-			}
-			result.Expression = AllExpressions[i]
-			json.NewEncoder(w).Encode(&result)
-		}
+	log.Println(id)
+	contex, ok := r.Context().Value(DB).(*HandlerContext)
+	if !ok {
+		http.Error(w, "cannot get user_id and sqlDB", http.StatusInternalServerError)
+		return
 	}
+
+	var GetExpressionResponse struct{
+		Expression string `json:"expression"`
+		Result string `json:"result"`
+	}
+
+	err := contex.DB.DB.QueryRow("SELECT expression, result FROM expressions WHERE id = ?", id).Scan(&GetExpressionResponse.Expression, &GetExpressionResponse.Result)
+	if err != nil{
+		http.Error(w, "cannot get expression", http.StatusInternalServerError)
+		return
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.Encode(&GetExpressionResponse)
+
 
 }
 
@@ -115,7 +170,7 @@ func AuthMiddleware(sqlDB *auth.App, next http.Handler) http.HandlerFunc {
 		} else {
 			http.Error(w, "cannot parse claims", http.StatusInternalServerError)
 		}
-		fmt.Println(UserId)
+		log.Println("!", UserId)
 		exist, err := sqlDB.Compare(UserId)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot compare %v", err), http.StatusInternalServerError)
@@ -126,7 +181,12 @@ func AuthMiddleware(sqlDB *auth.App, next http.Handler) http.HandlerFunc {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		contex := HandlerContext{
+			DB: sqlDB,
+			user_id: UserId,
+		}
+		ctx := context.WithValue(r.Context(), DB, &contex)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 
 }
@@ -136,8 +196,8 @@ func OrkestratorRun(db *sql.DB) {
 	sqlDB := auth.NewApp(db)
 
 	http.HandleFunc("/api/v1/calculate", AuthMiddleware(sqlDB, http.HandlerFunc(NewExpression)))
-	http.HandleFunc("/api/v1/expressions", GetAllExpressions)
-	http.HandleFunc("/api/v1/expressions/", GetExpression)
+	http.HandleFunc("/api/v1/expressions", AuthMiddleware(sqlDB, http.HandlerFunc(GetAllExpressions)))
+	http.HandleFunc("/api/v1/expressions/", AuthMiddleware(sqlDB, http.HandlerFunc(GetExpression)))
 	http.HandleFunc("/api/v1/register", sqlDB.Register)
 	http.HandleFunc("/api/v1/login", sqlDB.SingIn)
 

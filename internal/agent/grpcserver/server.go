@@ -33,7 +33,7 @@ func (s *Server) GetTask(ctx context.Context, _ *pb.GetTaskRequest) (*pb.GetTask
 }
 
 func (s *Server) SendResult(ctx context.Context, res *pb.SendResultRequest) (*pb.SendResultResponse, error) {
-
+	
 	calculator.Tasks[0].Operation_time = time.Duration(res.OperationTime)
 
 	calculator.Task_Ready <- res.Result

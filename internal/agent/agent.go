@@ -52,9 +52,10 @@ func AgentRun() {
 	for {
 		resp, err := client.GetTask(context.Background(), &pb.GetTaskRequest{})
 		if err != nil || (resp.Arg1 == 0 && resp.Arg2 == 0) {
-			time.Sleep(time.Second)
+			time.Sleep(2 * time.Millisecond)
 			continue
 		}
+		
 		start := time.Now()
 		result, err := Count(resp.Arg1, resp.Arg2, resp.Operation)
 		if err != nil {
