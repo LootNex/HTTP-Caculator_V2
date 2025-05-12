@@ -69,7 +69,7 @@ func (db App) SingIn(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": uuid,
 		"nbf":     now.Unix(),
-		"exp":     now.Add(5 * time.Minute).Unix(),
+		"exp":     now.Add(10 * time.Minute).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte("super_secret_signature"))
