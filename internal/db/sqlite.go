@@ -8,7 +8,7 @@ import (
 )
 
 func InitDB() (*sql.DB, error) {
-    db, err := sql.Open("sqlite", "C:/Nikita/Calc/HTTP-Caculator_V2/internal/db/store.db")
+    db, err := sql.Open("sqlite", "./internal/db/store.db")
     if err != nil {
         return nil, fmt.Errorf("failed to open SQLite: %v", err)
     }
